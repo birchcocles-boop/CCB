@@ -1,0 +1,90 @@
+CALYX COMMAND BRIDGE
+Version 0.5.0 - Development Preview
+
+ABOUT
+Calyx Command Bridge provides a mobile web interface for
+submitting Bash scripts to an isolated Podman container.
+
+This is experimental software, not a hardened remote
+administration platform.
+
+REQUIREMENTS
+- Linux with rootless Podman
+- Python 3
+- Tailscale with HTTPS Serve
+- A compatible Debian sandbox image
+- A trusted device for initial pairing
+
+CONFIGURATION
+CCB_PUBLIC_HOST
+  Required HTTPS hostname, without https://
+
+CCB_SANDBOX_IMAGE
+  Optional pinned container image reference
+
+SECURITY
+- Do not publish admin tokens or paired-device credentials.
+- Never expose the receiver directly to the public internet.
+- Use authenticated HTTPS access.
+- Sandbox isolation reduces risk but does not guarantee security.
+- Do not enable legacy host diagnostics on untrusted networks.
+- Review all configuration before deploying.
+
+INSTALLATION
+1. Install Python 3, rootless Podman, and Tailscale.
+2. Clone this repository and enter its directory.
+3. Create a private administrator token:
+
+   umask 077
+   mkdir -p ~/.config/calyx-command-bridge
+   python3 -c 'import secrets; print(secrets.token_urlsafe(48))' > ~/.config/calyx-command-bridge/admin-token
+   chmod 700 ~/.config/calyx-command-bridge
+   chmod 600 ~/.config/calyx-command-bridge/admin-token
+
+4. Pull the pinned Debian image referenced in
+   receiver/ccb_container_runner.py using rootless Podman.
+
+5. Configure Tailscale HTTPS Serve to forward requests
+   to http://127.0.0.1:8765.
+   Do not enable public Funnel access.
+
+6. Set the HTTPS hostname and start the receiver:
+
+   export CCB_PUBLIC_HOST="your-device.your-tailnet.ts.net"
+   python3 receiver/server.py
+
+7. Check the receiver:
+
+   curl http://127.0.0.1:8765/api/health
+
+8. Visit the HTTPS hostname through Tailscale.
+   Enter your administrator token and select
+   "Remember This Device (30 days)".
+
+9. Test a harmless sandbox command:
+
+   echo CALYX_TEST
+
+DEVICE MANAGEMENT
+Device records are stored in:
+~/.config/calyx-command-bridge/devices.json
+
+Individual device revocation is implemented in the
+Python module but has no web interface yet.
+
+SECURITY AND TESTING
+Never publish credentials or expose the HTTP receiver
+directly to the internet. This development preview has
+not undergone an independent security audit.
+
+Run automated tests:
+
+PYTHONPATH=.:receiver python3 -m unittest discover -s tests -v
+
+COLLABORATION
+Contributions, bug reports, documentation improvements,
+and security reviews are welcome.
+
+LICENSE
+GNU General Public License version 3 only (GPL-3.0-only).
+See LICENSE for the complete terms.

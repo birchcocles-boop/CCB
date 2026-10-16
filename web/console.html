@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calyx Sandbox Console</title>
+<style>
+body{font:16px system-ui;background:#101820;color:#eee;margin:20px}
+main{max-width:850px;margin:auto}
+textarea,input,button,pre{box-sizing:border-box;width:100%;padding:12px;margin:8px 0}
+textarea,pre{background:#071016;color:#aef;border:1px solid #456;font:14px monospace}
+textarea{height:240px}
+input{background:#182630;color:white;border:1px solid #456}
+button{background:#176b57;color:white;border:0;font-weight:bold}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;min-height:100px}
+</style>
+<main>
+<h2>Calyx Sandbox Console</h2>
+<p>Isolated Debian container — not the Steam Deck host.</p>
+<input id="token" type="password" placeholder="Sandbox admin token">
+<textarea id="script" spellcheck="false">echo "Hello from Calyx"
+id
+</textarea>
+<button id="run">Execute in Sandbox</button>
+<p id="status">Ready</p>
+<pre id="output"></pre>
+</main>
+<script>
+const tokenField = document.getElementById("token");
+const pair = document.createElement("button");
+pair.textContent = "Remember This Device (30 days)";
+run.insertAdjacentElement("afterend", pair);
+
+pair.onclick = async () => {
+  const status = document.getElementById("status");
+  status.textContent = "Pairing...";
+  try {
+    const response = await fetch("/api/device/pair", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"X-CCB-Admin-Token": tokenField.value},
+      body: ""
+    });
+    const result = await response.json();
+    if (!response.ok) throw Error(result.error || "Pairing failed");
+    tokenField.value = "";
+    status.textContent = "Device paired for 30 days!";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+};
+
+run.onclick=async()=>{
+  run.disabled=true;
+  document.getElementById("status").textContent="Executing...";
+  try{
+    const response=await fetch("/api/sandbox/run",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "X-CCB-Admin-Token":document.getElementById("token").value
+      },
+      body:JSON.stringify({script:document.getElementById("script").value})
+    });
+    const data=await response.json();
+    document.getElementById("output").textContent=data.stdout??data.error??"";
+    document.getElementById("status").textContent=
+      "HTTP "+response.status+
+      (data.exit_code!==undefined?" | Exit "+data.exit_code:"")+
+      (data.duration_ms!==undefined?" | "+data.duration_ms+" ms":"");
+  }catch(error){
+    document.getElementById("status").textContent="Connection error";
+    document.getElementById("output").textContent=String(error);
+  }finally{
+    run.disabled=false;
+  }
+};
+</script>
+</html>
